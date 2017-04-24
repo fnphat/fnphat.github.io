@@ -1,0 +1,104 @@
+<meta charset="UTF-8" />
+<form name="form" onsubmit="return false;">
+    <fieldset>
+        <legend>Sign a transaction</legend>
+        <br>
+        Network:<p>
+        <div>
+            <input type="radio" id="network_btc" name="network" value="btc"> BTC<br>
+            <input type="radio" id="network_ltc" name="network" value="ltc"> LTC<br>
+            <input type="radio" id="network_dash" name="network" value="dash"> DASH<br>
+            <input type="radio" id="network_doge" name="network" value="doge"> DOGE<br>
+        </div>
+        <br>
+        Unsigned tx:<p>
+        <textarea id="unsigned_tx" cols="100" rows="10"></textarea>
+        <br><br>
+        pkey:<p>
+        <textarea id="pkey" cols="100" rows="10"></textarea>
+        <br><br>
+        <br><br>                
+        <input type="submit" value="Sign tx" onclick="sign_tx();" />
+        <br>
+        <br>
+        <u>Signed tx</u><br><br>
+        <textarea readonly id="signed_tx_hex"  cols="100" rows="10"></textarea>
+        <br>
+        <div id="msg"></div>    
+        <div id="signed_tx_qrcode"></div>
+        <br>
+        QRCode version:<p>
+        <input type="text" id="version"><br>
+        <br>
+        QRCode level:<p>
+        <div>
+            <input type="radio" id="level_l" name="level" value="L"> L<br>
+            <input type="radio" id="level_m" name="level" value="M"> M<br>
+            <input type="radio" id="level_q" name="level" value="Q"> Q<br>
+            <input type="radio" id="level_h" name="level" value="H"> H<br>
+        </div>
+    </fieldset>
+</form>
+
+
+
+<script src="bitcoinjs.min.js"></script>
+<script src="qrcode.min.js"></script>
+<script>
+document.getElementById('network_ltc').checked = true;
+document.getElementById('unsigned_tx').value = ''; 
+document.getElementById('pkey').value = ''; 
+document.getElementById('signed_tx_hex').value = ''; 
+document.getElementById('version').value = '16'; 
+document.getElementById('level_l').checked = true;
+
+function sign_tx() {
+    for(i=0; i<document.form.network.length; i++) {
+        if (document.form.network[i].checked) {
+            network = document.form.network[i].value;
+            break;
+        }
+    }
+    var tx_hex = document.getElementById("unsigned_tx").value;
+    var pkey = document.getElementById("pkey").value;
+    var tx = bitcoinjs.Transaction.fromHex(tx_hex);
+    var version = document.getElementById("version").value
+    for(i=0; i<document.form.level.length; i++) {
+        if (document.form.level[i].checked) {
+            level = document.form.level[i].value;
+            break;
+        }
+    }
+    console.log('Network: ' +network);
+    console.log('Version: ' +version);
+    console.log('Level: ' +level);
+    
+    if (network == 'btc') {
+        network = bitcoinjs.networks.bitcoin;
+    }    
+    else if (network == 'ltc') {
+        network = bitcoinjs.networks.litecoin;
+    }
+    else if (network == 'dash') {
+        network = bitcoinjs.networks.dash;
+    }
+    else if (network == 'doge') {
+        network = bitcoinjs.networks.dogecoin;
+    }
+    else network = undefined
+    var key_pair = bitcoinjs.ECPair.fromWIF(pkey, network);
+    key_pair.compressed = true;
+    var tx_builder = bitcoinjs.TransactionBuilder.fromTransaction(tx, network);
+    tx_builder.tx.ins.forEach( function(input, i) {
+        tx_builder.sign(i, key_pair);
+    });
+    signed_tx_hex = tx_builder.build().toHex();
+    console.log('Signed tx hex: ' +signed_tx_hex);
+    var qr = qrcode(version, level);
+    qr.addData(signed_tx_hex);
+    qr.make();
+    document.getElementById('signed_tx_hex').value = signed_tx_hex;
+    document.getElementById('signed_tx_qrcode').innerHTML = qr.createImgTag();
+}
+</script>        
+

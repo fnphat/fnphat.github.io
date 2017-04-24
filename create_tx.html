@@ -1,0 +1,179 @@
+<meta charset="UTF-8" />
+<form name="form" onsubmit="return false;">
+    <fieldset>
+        <legend>Create a transaction</legend>
+        <br>
+        Network:<p>
+        <div>
+            <input type="radio" id="network_btc" name="network" value="btc"> BTC<br>
+            <input type="radio" id="network_ltc" name="network" value="ltc"> LTC<br>
+            <input type="radio" id="network_dash" name="network" value="dash"> DASH<br>
+            <input type="radio" id="network_doge" name="network" value="doge"> DOGE<br>
+        </div>
+
+        <hr>
+
+        <br>
+        Input 1 tx hash:<p>
+        <textarea id="input_1_tx" cols="100" rows="2"></textarea>
+        <br>
+        Input 1 index:
+        <select id="input_1_index">
+            <option value="-" selected> - </option>        
+            <option value="0">0</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+        </select>
+
+        <br><br><br>
+        Input 2 tx hash:<p>
+        <textarea id="input_2_tx" cols="100" rows="2"></textarea>
+        <br>
+        Input 2 index:
+        <select id="input_2_index">
+            <option value="-" selected> - </option>
+            <option value="0">0</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+        </select>
+
+        <hr>
+
+        <br><br>
+        Output 1 address:<p>
+        <textarea id="output_1_addr" cols="100" rows="2"></textarea>
+        <br><br>
+        Output 1 amount (in Satoshis, 10**-8):
+        <input type="text" id="output_1_amount">
+        <br>
+        
+        <br><br>
+        Output 2 address:<p>
+        <textarea id="output_2_addr" cols="100" rows="2"></textarea>
+        <br><br>
+        Output 2 amount (in Satoshis, 10**-8):
+        <input type="text" id="output_2_amount">
+        <br>        
+        
+        <br><br>
+        <br><br>                
+        <input type="submit" value="Get tx hex" onclick="create_tx();" />
+        <br>
+
+        <br>
+        <u>Unsigned tx hex</u><br><br>
+        <textarea readonly id="unsigned_tx_hex"  cols="100" rows="10"></textarea>
+        <br>
+        <div id="msg"></div>    
+        <div id="unsigned_tx_qrcode"></div>
+        <br>
+        QRCode version:<p>
+        <input type="text" id="version"><br>
+        <br>
+        QRCode level:<p>
+        <div>
+            <input type="radio" id="level_l" name="level" value="L"> L<br>
+            <input type="radio" id="level_m" name="level" value="M"> M<br>
+            <input type="radio" id="level_q" name="level" value="Q"> Q<br>
+            <input type="radio" id="level_h" name="level" value="H"> H<br>
+        </div>
+    </fieldset>
+</form>
+
+
+
+<script src="bitcoinjs.min.js"></script>
+<script src="qrcode.min.js"></script>
+<script>
+document.getElementById('network_ltc').checked = true;
+document.getElementById('unsigned_tx_hex').value = ''; 
+document.getElementById('version').value = '16'; 
+document.getElementById('level_l').checked = true;
+
+window.onerror = function (msg, url, lineNo, columnNo, error) {
+    alert(msg);
+    return false;
+}
+
+function create_tx() {
+    for(i=0; i<document.form.network.length; i++) {
+        if (document.form.network[i].checked) {
+            network = document.form.network[i].value;
+            break;
+        }
+    }
+    var in_1_tx = document.getElementById("input_1_tx").value;
+    var in_1_index = document.getElementById("input_1_index").value;
+    var in_2_tx = document.getElementById("input_2_tx").value;
+    var in_2_index = document.getElementById("input_2_index").value;
+    var out_1_addr = document.getElementById("output_1_addr").value;
+    var out_1_amount = document.getElementById("output_1_amount").value;
+    var out_2_addr = document.getElementById("output_2_addr").value;
+    var out_2_amount = document.getElementById("output_2_amount").value;
+    
+    var version = document.getElementById("version").value
+    for(i=0; i<document.form.level.length; i++) {
+        if (document.form.level[i].checked) {
+            level = document.form.level[i].value;
+            break;
+        }
+    }
+    console.log('Network: ' +network);
+    console.log('Version: ' +version);
+    console.log('Level: ' +level);
+    
+    if (network == 'btc') {
+        network = bitcoinjs.networks.bitcoin;
+    }    
+    else if (network == 'ltc') {
+        network = bitcoinjs.networks.litecoin;
+    }
+    else if (network == 'dash') {
+        network = bitcoinjs.networks.dash;
+    }
+    else if (network == 'doge') {
+        network = bitcoinjs.networks.dogecoin;
+    }
+    
+    var tx = new bitcoinjs.TransactionBuilder(network);
+    
+    var inputs = [[in_1_tx, in_1_index], [in_2_tx, in_2_index]];
+    i = 1;
+    for (input of inputs) {
+        var tx_hash = input[0];
+        var tx_index = parseInt(input[1]);
+        if ( tx_hash != '' && !isNaN(tx_index)) {
+            console.log('Input #' +parseInt(i)+ ': ' +tx_hash+ '/' +tx_index);
+            tx.addInput(tx_hash, tx_index);
+        }
+        i++;
+    }
+    var outputs = [[out_1_addr, out_1_amount], [out_2_addr, out_2_amount]]
+    i = 1;
+    for (output of outputs) {
+        address = output[0];
+        amount = parseInt(output[1]);
+        if ( address != '' && amount > 0 ) {
+            console.log('Output #' +parseInt(i)+ ': ' +address+ '/' +amount);
+            // In satoshis
+            tx.addOutput(address, amount);
+        }
+        i++;
+    }
+
+    unsigned_tx_hex = tx.buildIncomplete().toHex();
+    console.log('Unsigned tx hex: ' +unsigned_tx_hex);
+    
+    var qr = qrcode(version, level);
+    qr.addData(unsigned_tx_hex);
+    qr.make();
+    document.getElementById('unsigned_tx_hex').value = unsigned_tx_hex;
+    document.getElementById('unsigned_tx_qrcode').innerHTML = qr.createImgTag();
+    alert('Success!');
+}
+</script>        
+
