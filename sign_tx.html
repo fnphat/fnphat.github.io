@@ -52,6 +52,11 @@ document.getElementById('signed_tx_hex').value = '';
 document.getElementById('version').value = '16'; 
 document.getElementById('level_l').checked = true;
 
+window.onerror = function (msg, url, lineNo, columnNo, error) {
+    alert(msg);
+    return false;
+}
+
 function sign_tx() {
     for(i=0; i<document.form.network.length; i++) {
         if (document.form.network[i].checked) {
@@ -99,6 +104,7 @@ function sign_tx() {
     qr.make();
     document.getElementById('signed_tx_hex').value = signed_tx_hex;
     document.getElementById('signed_tx_qrcode').innerHTML = qr.createImgTag();
+    alert('Success');
 }
 </script>        
 
