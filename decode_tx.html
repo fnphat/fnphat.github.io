@@ -1,0 +1,120 @@
+<meta charset="UTF-8" />
+<form name="form" onsubmit="return false;">
+    <fieldset>
+        <legend>Decode transaction</legend>
+        <br>
+        Network:<p>
+        <div>
+            <input type="radio" id="network_btc" name="network" value="btc"> BTC<br>
+            <input type="radio" id="network_ltc" name="network" value="ltc"> LTC<br>
+            <input type="radio" id="network_dash" name="network" value="dash"> DASH<br>
+            <input type="radio" id="network_doge" name="network" value="doge"> DOGE<br>
+        </div>
+
+        <br>
+        <u>Tx hex</u><br><br>
+        <textarea id="tx_hex"  cols="100" rows="10"></textarea>
+        <br>
+        
+        <br>
+        <u>Estimated total input amount (optional, for fee calculation)</u><br><br>
+        <input type="text" id="total_input_amount"><br>
+        <br>
+
+        <br>
+        <u>Estimated market value of a BTC in USD (optional, for fee calculation)</u><br><br>
+        <input type="text" id="btc_market_value"><br>
+        <br>
+        
+        <br>
+        <input type="submit" value="Show tx info" onclick="show_tx();" />
+        <br><br>                
+
+        <hr>
+        
+        <br>
+        <u>Decoded tx</u><br><br>
+        <textarea readonly id="decoded_tx"  cols="100" rows="10"></textarea>
+        <br>
+
+    </fieldset>
+</form>
+
+
+
+<script src="bitcoinjs.min.js"></script>
+<script src="qrcode.min.js"></script>
+<script>
+document.getElementById('network_ltc').checked = true;
+document.getElementById('tx_hex').value = '01000000017639cd95328b7db4dc0eeccbd4b113e280f0ccba308d5503547d1eacb2242677010000006a47304402210099d65832737008ba6728152f76b63b1569bc764b336143f887db04f92a6f3479021f4eb55a92b2382ebf3aa2dde19861eb7065681a4e53567bd0572cbd7a96f968012102b9f24d18e7b4bc958dc2cab0da0c54b4b44ce9f95a6ddee90f3330e65af0899affffffff0260823b00000000001976a91470028c28d184205b2a7252c734ee6300a2c4461788acc0c62d00000000001976a91459ac4cfe2858ca7338adb3bd6079d277d281bc6688ac00000000'; 
+document.getElementById('total_input_amount').value = ''; 
+document.getElementById('btc_market_value').value = ''; 
+document.getElementById('decoded_tx').value = '';
+
+window.onerror = function (msg, url, lineNo, columnNo, error) {
+    alert(msg);
+    return false;
+}
+
+function show_tx() {
+    for(i=0; i<document.form.network.length; i++) {
+        if (document.form.network[i].checked) {
+            network = document.form.network[i].value;
+            break;
+        }
+    }
+    console.log('Network: ' +network);
+    if (network == 'btc') {
+        network = bitcoinjs.networks.bitcoin;
+    }    
+    else if (network == 'ltc') {
+        network = bitcoinjs.networks.litecoin;
+    }
+    else if (network == 'dash') {
+        network = bitcoinjs.networks.dash;
+    }
+    else if (network == 'doge') {
+        network = bitcoinjs.networks.dogecoin;
+    }
+    
+    var tx_hex = document.getElementById('tx_hex').value;
+    var total_input_amount = document.getElementById('total_input_amount').value;
+    var btc_market_value = document.getElementById('btc_market_value').value    ;
+    
+    var tx = bitcoinjs.Transaction.fromHex(tx_hex);
+    var msg = '\nTx hash: ' +tx.getId();
+    msg += '\n---';
+    
+    tx.ins.forEach( function(input, i) {
+        msg += '\nInput #' +i+ ': ' +input.hash.reverse().toString('hex')+ '/' +input.index;
+    });
+    msg += '\n---';
+    var outputs_satoshis = 0;
+    tx.outs.forEach( function(output, i) {
+        var amount_satoshis = output.value
+        var amount_btc = parseFloat((amount_satoshis * 10**-8).toFixed(8))
+        var amount_mbtc = parseFloat((amount_btc * 1000).toFixed(5))
+        msg += '\nOutput #' +i+ ': ' +bitcoinjs.address.fromOutputScript (output.script, network)+ '/' +amount_satoshis+ ' = ' +amount_mbtc+ ' mBTC = ' +amount_btc+ ' BTC';
+        outputs_satoshis += output.value;
+    });
+    msg += '\n===';
+    var outputs_btc = parseFloat((outputs_satoshis * 10**-8).toFixed(8))
+    var outputs_mbtc = parseFloat((outputs_btc * 1000).toFixed(5))
+    msg += '\nTotal output: ' +outputs_satoshis+ ' satoshis = ' +outputs_mbtc+ ' mBTC = ' +outputs_btc+ ' BTC';
+    if (total_input_amount != '') {
+        var fee_satoshis = total_input_amount-outputs_satoshis;
+        var fee_btc = parseFloat((fee_satoshis * 10**-8).toFixed(8))
+        var fee_mbtc = parseFloat((fee_btc * 1000).toFixed(5))
+        msg += '\nEstimated fee: ' +fee_satoshis+ ' satoshis = ' +fee_mbtc+ ' mBTC = ' +fee_btc+ ' BTC';
+        if (btc_market_value != '') {
+            var fee_value = parseFloat((fee_btc*btc_market_value).toFixed(6));
+            msg += '\nEstimated fee value: ' +fee_value+ ' USD';
+        }
+    }
+    
+    document.getElementById('decoded_tx').value = msg;
+    alert('Success!');
+}
+
+</script>        
+
