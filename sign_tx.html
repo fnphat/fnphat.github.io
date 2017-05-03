@@ -15,18 +15,28 @@
         <textarea id="unsigned_tx" cols="100" rows="10"></textarea>
         <br><br>
         pkey:<p>
-        <textarea id="pkey" cols="100" rows="10"></textarea>
+        <textarea id="pkey" cols="100" rows="1"></textarea>
         <br><br>
-        <br><br>                
+        <input type="submit" value="Calculate addresses" onclick="calc_addrs();" />
+        <br><br>
+        Compression of sending address:<p>
+        <div>
+            <input type="radio" id="choice_comp" name="choice_addr" /> Compressed: <b><label id="choice_comp_label"></label></b><br>
+            <input type="radio" id="choice_uncomp" name="choice_addr" /> Uncompressed: <b><label id="choice_uncomp_label"></label></b><br>
+        </div>
+        <br><br>
         <input type="submit" value="Sign tx" onclick="sign_tx();" />
-        <br>
-        <br>
+        <br><br>
+        <br><br>
         <u>Signed tx</u><br><br>
         <textarea readonly id="signed_tx_hex"  cols="100" rows="10"></textarea>
         <br>
-        <div id="msg"></div>    
+        <div id="msg"></div>
         <div id="signed_tx_qrcode"></div>
         <br>
+        <u>Sending address:</u><br><br>
+        <textarea readonly id="sending_addr"  cols="100" rows="1"></textarea>
+        <br><br>
         QRCode version:<p>
         <input type="text" id="version"><br>
         <br>
@@ -45,54 +55,105 @@
 <script src="bitcoinjs.min.js"></script>
 <script src="qrcode.min.js"></script>
 <script>
-document.getElementById('network_ltc').checked = true;
+document.getElementById('network_btc').checked = true;
 document.getElementById('unsigned_tx').value = ''; 
 document.getElementById('pkey').value = ''; 
 document.getElementById('signed_tx_hex').value = ''; 
 document.getElementById('version').value = '16'; 
 document.getElementById('level_l').checked = true;
+document.getElementById('choice_comp_label').innerHTML = '';
+document.getElementById('choice_comp_label').value = '';
+document.getElementById('choice_uncomp_label').innerHTML = '';
+document.getElementById('choice_uncomp_label').value = '';
+document.getElementById('choice_comp').checked = true;
 
 window.onerror = function (msg, url, lineNo, columnNo, error) {
     alert(msg);
     return false;
 }
 
-function sign_tx() {
-    for(i=0; i<document.form.network.length; i++) {
+function calc_addrs() {
+    console.log('Calculating addresses.');
+    var network = undefined;
+    var network_choice = undefined;
+    for (i=0; i<document.form.network.length; i++) {
         if (document.form.network[i].checked) {
-            network = document.form.network[i].value;
+            var network_choice = document.form.network[i].value;
+            if (network_choice == 'network_btc') {
+                network = bitcoinjs.networks.bitcoin;
+            }    
+            else if (network_choice == 'network_ltc') {
+                network = bitcoinjs.networks.litecoin;
+            }
+            else if (network_choice == 'network_dash') {
+                network = bitcoinjs.networks.dash;
+            }
+            else if (network_choice == 'network_doge') {
+                network = bitcoinjs.networks.dogecoin;
+            }
             break;
         }
     }
-    var tx_hex = document.getElementById("unsigned_tx").value;
+    console.log('Network: ' +network_choice);
     var pkey = document.getElementById("pkey").value;
+    var key_pair = bitcoinjs.ECPair.fromWIF(pkey, network);
+    key_pair.compressed = true;
+    var addr = key_pair.getAddress();
+    console.log('Compressed address: ' +addr);
+    document.getElementById('choice_comp_label').innerHTML = addr;
+    document.getElementById('choice_comp_label').value = addr;
+    key_pair.compressed = false;
+    addr = key_pair.getAddress();
+    console.log('Uncompressed address: ' +addr);
+    document.getElementById('choice_uncomp_label').innerHTML = addr;
+    document.getElementById('choice_uncomp_label').value = addr;
+}
+
+function sign_tx() {
+    console.log('Signing transaction.');
+    var network = undefined;
+    var network_choice = undefined;
+    for (i=0; i<document.form.network.length; i++) {
+        if (document.form.network[i].checked) {
+            var network_choice = document.form.network[i].value;
+            if (network_choice == 'network_btc') {
+                network = bitcoinjs.networks.bitcoin;
+            }    
+            else if (network_choice == 'network_ltc') {
+                network = bitcoinjs.networks.litecoin;
+            }
+            else if (network_choice == 'network_dash') {
+                network = bitcoinjs.networks.dash;
+            }
+            else if (network_choice == 'network_doge') {
+                network = bitcoinjs.networks.dogecoin;
+            }
+            break;
+        }
+    }
+    console.log('Network: ' +network_choice);    
+    var pkey = document.getElementById("pkey").value;
+    var key_pair = bitcoinjs.ECPair.fromWIF(pkey, network);
+    if (document.getElementById('choice_uncomp').checked) {
+        key_pair.compressed = false;
+    }
+    else key_pair.compressed = true;
+    console.log('Compressed address: ' +key_pair.compressed);
+    var sending_addr = key_pair.getAddress();
+    console.log('Sending address: ' +sending_addr);
+    document.getElementById('sending_addr').value = sending_addr;
+    var tx_hex = document.getElementById("unsigned_tx").value;
     var tx = bitcoinjs.Transaction.fromHex(tx_hex);
     var version = document.getElementById("version").value
-    for(i=0; i<document.form.level.length; i++) {
+    console.log('Version: ' +version);
+    var level = undefined;
+    for (i=0; i<document.form.level.length; i++) {
         if (document.form.level[i].checked) {
             level = document.form.level[i].value;
             break;
         }
     }
-    console.log('Network: ' +network);
-    console.log('Version: ' +version);
     console.log('Level: ' +level);
-    
-    if (network == 'btc') {
-        network = bitcoinjs.networks.bitcoin;
-    }    
-    else if (network == 'ltc') {
-        network = bitcoinjs.networks.litecoin;
-    }
-    else if (network == 'dash') {
-        network = bitcoinjs.networks.dash;
-    }
-    else if (network == 'doge') {
-        network = bitcoinjs.networks.dogecoin;
-    }
-    else network = undefined
-    var key_pair = bitcoinjs.ECPair.fromWIF(pkey, network);
-    key_pair.compressed = true;
     var tx_builder = bitcoinjs.TransactionBuilder.fromTransaction(tx, network);
     tx_builder.tx.ins.forEach( function(input, i) {
         tx_builder.sign(i, key_pair);
