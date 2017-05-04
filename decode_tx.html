@@ -18,12 +18,12 @@
         
         <br>
         <u>Estimated total input amount (optional, for fee calculation)</u><br><br>
-        <input type="text" id="total_input_amount" /><br>
+        <input type="text" id="total_input_amount"><br>
         <br>
 
         <br>
         <u>Estimated market value of a BTC in USD (optional, for fee calculation)</u><br><br>
-        <input type="text" id="btc_market_value" /><br>
+        <input type="text" id="btc_market_value"><br>
         <br>
         
         <br>
@@ -90,20 +90,20 @@ function show_tx() {
     msg += '\n---';
     var outputs_satoshis = 0;
     tx.outs.forEach( function(output, i) {
-        var amount_satoshis = output.value;
-        var amount_btc = parseFloat((amount_satoshis * 10**-8).toFixed(8));
-        var amount_mbtc = parseFloat((amount_btc * 1000).toFixed(5));
+        var amount_satoshis = output.value
+        var amount_btc = parseFloat((amount_satoshis * 10**-8).toFixed(8))
+        var amount_mbtc = parseFloat((amount_btc * 1000).toFixed(5))
         msg += '\nOutput #' +i+ ': ' +bitcoinjs.address.fromOutputScript (output.script, network)+ '/' +amount_satoshis+ ' = ' +amount_mbtc+ ' mBTC = ' +amount_btc+ ' BTC';
         outputs_satoshis += output.value;
     });
     msg += '\n===';
-    var outputs_btc = parseFloat((outputs_satoshis * 10**-8).toFixed(8));
-    var outputs_mbtc = parseFloat((outputs_btc * 1000).toFixed(5));
+    var outputs_btc = parseFloat((outputs_satoshis * 10**-8).toFixed(8))
+    var outputs_mbtc = parseFloat((outputs_btc * 1000).toFixed(5))
     msg += '\nTotal output: ' +outputs_satoshis+ ' satoshis = ' +outputs_mbtc+ ' mBTC = ' +outputs_btc+ ' BTC';
     if (total_input_amount != '') {
         var fee_satoshis = total_input_amount-outputs_satoshis;
-        var fee_btc = parseFloat((fee_satoshis * 10**-8).toFixed(8));
-        var fee_mbtc = parseFloat((fee_btc * 1000).toFixed(5));
+        var fee_btc = parseFloat((fee_satoshis * 10**-8).toFixed(8))
+        var fee_mbtc = parseFloat((fee_btc * 1000).toFixed(5))
         msg += '\nEstimated fee: ' +fee_satoshis+ ' satoshis = ' +fee_mbtc+ ' mBTC = ' +fee_btc+ ' BTC';
         if (btc_market_value != '') {
             var fee_value = parseFloat((fee_btc*btc_market_value).toFixed(6));
