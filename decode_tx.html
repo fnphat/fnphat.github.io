@@ -34,7 +34,7 @@
         
         <br>
         <u>Decoded tx</u><br><br>
-        <textarea readonly id="decoded_tx"  cols="100" rows="10"></textarea>
+        <textarea readonly id="decoded_tx"  cols="100" rows="20"></textarea>
         <br>
 
     </fieldset>
@@ -44,10 +44,7 @@
 
 <script src="bitcoinjs.min.js"></script>
 <script>
-document.getElementById('network_ltc').checked = true;
-document.getElementById('tx_hex').value = ''; 
-document.getElementById('total_input_amount').value = ''; 
-document.getElementById('btc_market_value').value = ''; 
+document.getElementById('network_btc').checked = true;
 document.getElementById('decoded_tx').value = '';
 
 window.onerror = function (msg, url, lineNo, columnNo, error) {

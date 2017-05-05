@@ -152,27 +152,27 @@ function main() {
     var decoded_tx;
     var qr;
     var tx;
-    var version = version = parseInt(document.getElementById("version").value);
+    var version = version = Math.round(document.getElementById("version").value);
     var level;    
     var network;
     var network_choice;
     var in_1_tx = document.getElementById("input_1_tx").value;
-    var in_1_index = document.getElementById("input_1_index").value;
+    var in_1_index = parseInt(document.getElementById("input_1_index").value);
     var in_2_tx = document.getElementById("input_2_tx").value;
-    var in_2_index = document.getElementById("input_2_index").value;
+    var in_2_index = parseInt(document.getElementById("input_2_index").value);
     var output_1_addr = document.getElementById("output_1_addr").value;
-    var output_1_amount = parseInt(document.getElementById("output_1_amount").value * 10**8);
+    var output_1_amount = Math.round(document.getElementById("output_1_amount").value * 10**8);
     var output_2_addr = document.getElementById("output_2_addr").value;
-    var output_2_amount = parseInt(document.getElementById("output_2_amount").value * 10**8);
+    var output_2_amount = Math.round(document.getElementById("output_2_amount").value * 10**8);
     var output_3_addr = document.getElementById("output_3_addr").value;
-    var output_3_amount = parseInt(document.getElementById("output_3_amount").value * 10**8);
+    var output_3_amount = Math.round(document.getElementById("output_3_amount").value * 10**8);
     var output_4_addr = document.getElementById("output_4_addr").value;
-    var output_4_amount = parseInt(document.getElementById("output_4_amount").value * 10**8);
+    var output_4_amount = Math.round(document.getElementById("output_4_amount").value * 10**8);
     var output_5_addr = document.getElementById("output_5_addr").value;
-    var output_5_amount = parseInt(document.getElementById("output_5_amount").value * 10**8);
-    var total_input_amount = parseInt(document.getElementById("total_input_amount").value * 10**8);
+    var output_5_amount = Math.round(document.getElementById("output_5_amount").value * 10**8);
+    var total_input_amount = Math.round(document.getElementById("total_input_amount").value * 10**8);
     var btc_market_value = parseFloat(document.getElementById("btc_market_value").value);
-    var tx_fee = parseInt(document.getElementById("tx_fee").value * 10**8);
+    var tx_fee = Math.round(document.getElementById("tx_fee").value * 10**8);
 
     for (i=0; i<document.form.network.length; i++) {
         if (document.form.network[i].checked) {
@@ -221,6 +221,8 @@ function main() {
 };
 
 function create_unsigned_tx(network, inputs, outputs) {
+    // inputs = [(tx hash, integer index), ...]
+    // outputs = [(btc address, integer amount in satoshis), ...]
     var tx_hash;
     var tx_index;
     var i;
@@ -232,9 +234,9 @@ function create_unsigned_tx(network, inputs, outputs) {
     i = 1;
     for (input of inputs) {
         tx_hash = input[0];
-        tx_index = parseInt(input[1]);
+        tx_index = input[1];
         if ( tx_hash != '' && !isNaN(tx_index)) {
-            console.log('Input #' +parseInt(i)+ ': ' +tx_hash+ '/' +tx_index);
+            console.log('Input #' +i+ ': ' +tx_hash+ '/' +tx_index);
             txb.addInput(tx_hash, tx_index);
         }
         i++;
@@ -242,9 +244,9 @@ function create_unsigned_tx(network, inputs, outputs) {
     i = 1;
     for (output of outputs) {
         address = output[0];
-        amount = parseInt(output[1]);
+        amount = output[1];
         if ( address != '' && amount > 0 ) {
-            console.log('Output #' +parseInt(i)+ ': ' +address+ '/' +amount);
+            console.log('Output #' +i+ ': ' +address+ '/' +amount);
             // In satoshis
             txb.addOutput(address, amount);
         }
