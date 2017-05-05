@@ -98,6 +98,11 @@
         <u>Estimated transaction fee (optional)</u><br><br>
         <input type="text" id="tx_fee"><br>
         <br>
+
+        <br><br>
+        <u>Ideal fee per byte (optional, in satoshis/byte)</u><br><br>
+        <input type="text" id="ideal_fee_per_byte"><br>
+        <br>
         
         <br><br>
         <br><br>                
@@ -146,7 +151,9 @@ window.onerror = function (msg, url, lineNo, columnNo, error) {
 }
 
 function main() {
+    var raw_inputs;
     var inputs;
+    var raw_outputs;
     var outputs;
     var unsigned_tx_hex;
     var decoded_tx;
@@ -156,6 +163,8 @@ function main() {
     var level;    
     var network;
     var network_choice;
+    var ideal_tx_fee_comp;
+    var ideal_tx_fee_uncomp;
     var in_1_tx = document.getElementById("input_1_tx").value;
     var in_1_index = parseInt(document.getElementById("input_1_index").value);
     var in_2_tx = document.getElementById("input_2_tx").value;
@@ -173,6 +182,7 @@ function main() {
     var total_input_amount = Math.round(document.getElementById("total_input_amount").value * 10**8);
     var btc_market_value = parseFloat(document.getElementById("btc_market_value").value);
     var tx_fee = Math.round(document.getElementById("tx_fee").value * 10**8);
+    var ideal_fee_per_byte = parseInt(document.getElementById("ideal_fee_per_byte").value);
 
     for (i=0; i<document.form.network.length; i++) {
         if (document.form.network[i].checked) {
@@ -203,8 +213,24 @@ function main() {
     }
     console.log('Level: ' +level);
     
-    inputs = [[in_1_tx, in_1_index], [in_2_tx, in_2_index]];
-    outputs = [[output_1_addr, output_1_amount], [output_2_addr, output_2_amount], [output_3_addr, output_3_amount], [output_4_addr, output_4_amount], [output_5_addr, output_5_amount]];
+    raw_inputs = [[in_1_tx, in_1_index], [in_2_tx, in_2_index]];
+    inputs = [];
+    for (input of raw_inputs) {
+        tx_hash = input[0];
+        tx_index = input[1];
+        if ( tx_hash != '' && !isNaN(tx_index)) {
+            inputs.push(input);
+        }
+    }
+    raw_outputs = [[output_1_addr, output_1_amount], [output_2_addr, output_2_amount], [output_3_addr, output_3_amount], [output_4_addr, output_4_amount], [output_5_addr, output_5_amount]];
+    outputs = [];
+    for (output of raw_outputs) {
+        address = output[0];
+        amount = output[1];
+        if ( address != '' && amount > 0 ) {
+            outputs.push(output);
+        }
+    }
     unsigned_tx_hex = create_unsigned_tx(network, inputs, outputs);
     
     qr = qrcode(version, level);
@@ -215,6 +241,12 @@ function main() {
     
     tx = bitcoinjs.Transaction.fromHex(unsigned_tx_hex);
     decoded_tx = decode_tx(network, tx, total_input_amount, btc_market_value, tx_fee);
+    decoded_tx += '\nEstimated size of signed tx (comp. pubkey): ' +(10+(inputs.length*148)+(outputs.length*34))+ ' bytes';
+    decoded_tx += '\nEstimated size of signed tx (uncomp. pubkey): ' +(10+(inputs.length*180)+(outputs.length*34))+ ' bytes';
+    ideal_tx_fee_comp = parseFloat((ideal_fee_per_byte * (10+(inputs.length*148)+(outputs.length*34)) * 10**-8).toFixed(8));
+    decoded_tx += '\nIdeal tx fee (compressed pubkey)  : ' +ideal_tx_fee_comp+ ' BTC (' +(ideal_tx_fee_comp*btc_market_value).toFixed(2)+ ' USD)';
+    ideal_tx_fee_uncomp = parseFloat((ideal_fee_per_byte * (10+(inputs.length*180)+(outputs.length*34)) * 10**-8).toFixed(8));
+    decoded_tx += '\nIdeal tx fee (uncompressed pubkey): ' +ideal_tx_fee_uncomp+ ' BTC (' +(ideal_tx_fee_uncomp*btc_market_value).toFixed(2)+ ' USD)';
     document.getElementById('decoded_tx').value = decoded_tx;
 
     alert('Success!');
@@ -235,21 +267,17 @@ function create_unsigned_tx(network, inputs, outputs) {
     for (input of inputs) {
         tx_hash = input[0];
         tx_index = input[1];
-        if ( tx_hash != '' && !isNaN(tx_index)) {
-            console.log('Input #' +i+ ': ' +tx_hash+ '/' +tx_index);
-            txb.addInput(tx_hash, tx_index);
-        }
+        console.log('Input #' +i+ ': ' +tx_hash+ '/' +tx_index);
+        txb.addInput(tx_hash, tx_index);
         i++;
     }
     i = 1;
     for (output of outputs) {
         address = output[0];
         amount = output[1];
-        if ( address != '' && amount > 0 ) {
-            console.log('Output #' +i+ ': ' +address+ '/' +amount);
-            // In satoshis
-            txb.addOutput(address, amount);
-        }
+        console.log('Output #' +i+ ': ' +address+ '/' +amount);
+        // In satoshis
+        txb.addOutput(address, amount);
         i++;
     }
 

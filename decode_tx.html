@@ -78,7 +78,7 @@ function show_tx() {
     var btc_market_value = document.getElementById('btc_market_value').value    ;
     
     var tx = bitcoinjs.Transaction.fromHex(tx_hex);
-    var msg = '\nTx hash: ' +tx.getId();
+    var msg = '\nTx ID: ' +tx.getId();
     msg += '\n---';
     
     tx.ins.forEach( function(input, i) {
