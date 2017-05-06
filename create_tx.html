@@ -170,18 +170,18 @@ function main() {
     var in_2_tx = document.getElementById("input_2_tx").value;
     var in_2_index = parseInt(document.getElementById("input_2_index").value);
     var output_1_addr = document.getElementById("output_1_addr").value;
-    var output_1_amount = Math.round(document.getElementById("output_1_amount").value * 10**8);
+    var output_1_amount = Math.round(document.getElementById("output_1_amount").value * 10^8);
     var output_2_addr = document.getElementById("output_2_addr").value;
-    var output_2_amount = Math.round(document.getElementById("output_2_amount").value * 10**8);
+    var output_2_amount = Math.round(document.getElementById("output_2_amount").value * 10^8);
     var output_3_addr = document.getElementById("output_3_addr").value;
-    var output_3_amount = Math.round(document.getElementById("output_3_amount").value * 10**8);
+    var output_3_amount = Math.round(document.getElementById("output_3_amount").value * 10^8);
     var output_4_addr = document.getElementById("output_4_addr").value;
-    var output_4_amount = Math.round(document.getElementById("output_4_amount").value * 10**8);
+    var output_4_amount = Math.round(document.getElementById("output_4_amount").value * 10^8);
     var output_5_addr = document.getElementById("output_5_addr").value;
-    var output_5_amount = Math.round(document.getElementById("output_5_amount").value * 10**8);
-    var total_input_amount = Math.round(document.getElementById("total_input_amount").value * 10**8);
+    var output_5_amount = Math.round(document.getElementById("output_5_amount").value * 10^8);
+    var total_input_amount = Math.round(document.getElementById("total_input_amount").value * 10^8);
     var btc_market_value = parseFloat(document.getElementById("btc_market_value").value);
-    var target_fee = Math.round(document.getElementById("target_fee").value * 10**8);
+    var target_fee = Math.round(document.getElementById("target_fee").value * 10^8);
     var ideal_fee_per_byte = parseInt(document.getElementById("ideal_fee_per_byte").value);
 
     for (i=0; i<document.form.network.length; i++) {
@@ -246,17 +246,16 @@ function main() {
     alert('Success!');
 };
 
-
 function to_satoshis (btc_unit) {
-    return {'value': btc_unit * 10**8, 'unit': 'satoshis'};
+    return {'value': btc_unit * 10^8, 'unit': 'satoshis'};
 };
 
 function to_btc (satoshis_unit) {
-    return {'value': satoshis_unit * 10**-8, 'unit': 'BTC'};
+    return {'value': satoshis_unit * 10^-8, 'unit': 'BTC'};
 };
 
 function to_mbtc (btc_unit) {
-    return {'value': btc_unit * 10**3, 'unit': 'mBTC'};
+    return {'value': btc_unit * 10^3, 'unit': 'mBTC'};
 };
 
 function to_usd (satoshis, btc_market_value) {
