@@ -95,8 +95,8 @@
         <br>
 
         <br><br><br>
-        <u>Estimated transaction fee (optional)</u><br><br>
-        <input type="text" id="tx_fee"><br>
+        <u>Target transaction fee (optional)</u><br><br>
+        <input type="text" id="target_fee"><br>
         <br>
 
         <br><br>
@@ -181,7 +181,7 @@ function main() {
     var output_5_amount = Math.round(document.getElementById("output_5_amount").value * 10**8);
     var total_input_amount = Math.round(document.getElementById("total_input_amount").value * 10**8);
     var btc_market_value = parseFloat(document.getElementById("btc_market_value").value);
-    var tx_fee = Math.round(document.getElementById("tx_fee").value * 10**8);
+    var target_fee = Math.round(document.getElementById("target_fee").value * 10**8);
     var ideal_fee_per_byte = parseInt(document.getElementById("ideal_fee_per_byte").value);
 
     for (i=0; i<document.form.network.length; i++) {
@@ -240,19 +240,70 @@ function main() {
     document.getElementById('unsigned_tx_qrcode').innerHTML = qr.createImgTag();
     
     tx = bitcoinjs.Transaction.fromHex(unsigned_tx_hex);
-    decoded_tx = decode_tx(network, tx, total_input_amount, btc_market_value, tx_fee);
-    decoded_tx += '\nEstimated size of signed tx (comp. pubkey): ' +(10+(inputs.length*148)+(outputs.length*34))+ ' bytes';
-    decoded_tx += '\nEstimated size of signed tx (uncomp. pubkey): ' +(10+(inputs.length*180)+(outputs.length*34))+ ' bytes';
-    ideal_tx_fee_comp = parseFloat((ideal_fee_per_byte * (10+(inputs.length*148)+(outputs.length*34)) * 10**-8).toFixed(8));
-    decoded_tx += '\nIdeal tx fee (compressed pubkey)  : ' +ideal_tx_fee_comp+ ' BTC (' +(ideal_tx_fee_comp*btc_market_value).toFixed(2)+ ' USD)';
-    ideal_tx_fee_uncomp = parseFloat((ideal_fee_per_byte * (10+(inputs.length*180)+(outputs.length*34)) * 10**-8).toFixed(8));
-    decoded_tx += '\nIdeal tx fee (uncompressed pubkey): ' +ideal_tx_fee_uncomp+ ' BTC (' +(ideal_tx_fee_uncomp*btc_market_value).toFixed(2)+ ' USD)';
+    decoded_tx = decode_tx_for_humans(tx, network, total_input_amount, ideal_fee_per_byte, btc_market_value, target_fee)
     document.getElementById('decoded_tx').value = decoded_tx;
 
     alert('Success!');
 };
 
-function create_unsigned_tx(network, inputs, outputs) {
+
+function to_satoshis (btc_unit) {
+    return {'value': btc_unit * 10**8, 'unit': 'satoshis'};
+};
+
+function to_btc (satoshis_unit) {
+    return {'value': satoshis_unit * 10**-8, 'unit': 'BTC'};
+};
+
+function to_mbtc (btc_unit) {
+    return {'value': btc_unit * 10**3, 'unit': 'mBTC'};
+};
+
+function to_usd (satoshis, btc_market_value) {
+    var btc = to_btc(satoshis);
+    
+    return {'value': (btc.value * btc_market_value).toFixed(2), 'unit': 'USD'};
+};
+
+function decode_tx (tx_obj, network) {
+    var tx_hash = tx_obj.getId();
+    var inputs = [];
+    var outputs = [];
+    
+    tx_obj.ins.forEach( function(input, i) {
+        inputs.push({'tx': input.hash.reverse().toString('hex'), 'index': input.index});
+    });
+    tx_obj.outs.forEach( function(output, i) {
+        outputs.push({'addr': bitcoinjs.address.fromOutputScript(output.script, network), 'amount': output.value});
+    });
+    
+    return {'tx_hash': tx_hash, 'inputs': inputs, 'outputs': outputs};
+};
+
+function fee (tx_obj, network, total_input_amount) {
+    var outputs = decode_tx (tx_obj, network).outputs;
+    var total_output_amount = 0;
+    var fee;
+    
+    outputs.forEach( function(output, i) {
+        total_output_amount += output.amount;
+    });
+    fee = total_input_amount-total_output_amount;
+    
+    return fee;
+};
+
+function signed_tx_size (tx_obj, network) {
+    var decoded = decode_tx (tx_obj, network);
+    var num_inputs = decoded.inputs.length;
+    var outputs_size = decoded.outputs.length * 34;
+    var uncomp_size = 10 + (num_inputs * 180) + outputs_size;
+    var comp_size = 10 + (num_inputs * 148) + outputs_size;
+    
+    return {'comp': comp_size,'uncomp': uncomp_size};
+};
+
+function create_unsigned_tx (network, inputs, outputs) {
     // inputs = [(tx hash, integer index), ...]
     // outputs = [(btc address, integer amount in satoshis), ...]
     var tx_hash;
@@ -267,7 +318,6 @@ function create_unsigned_tx(network, inputs, outputs) {
     for (input of inputs) {
         tx_hash = input[0];
         tx_index = input[1];
-        console.log('Input #' +i+ ': ' +tx_hash+ '/' +tx_index);
         txb.addInput(tx_hash, tx_index);
         i++;
     }
@@ -275,76 +325,74 @@ function create_unsigned_tx(network, inputs, outputs) {
     for (output of outputs) {
         address = output[0];
         amount = output[1];
-        console.log('Output #' +i+ ': ' +address+ '/' +amount);
         // In satoshis
         txb.addOutput(address, amount);
         i++;
     }
-
     unsigned_tx_hex = txb.buildIncomplete().toHex();
-    console.log('Unsigned tx hex: ' +unsigned_tx_hex);
    
     return unsigned_tx_hex;
 };
 
-function decode_tx(network, tx, total_input_amount, btc_market_value, target_tx_fee) {
-    // total_input_amount in satoshis, btc_market_value value in USD
-    var outputs_satoshis = 0;
-    var amount_satoshis;
-    var amount_btc;
-    var amount_mbtc;
-    var inputs_btc;
-    var inputs_mbtc;
-    var outputs_btc;
-    var outputs_mbtc;
-    var target_fee_btc;
-    var target_fee_mbtc;
-    var fee_satoshis;
-    var fee_btc;
-    var fee_mbtc;
-    var fee_value;
-    var msg = '\nTx hash: ' +tx.getId();
-
+function decode_tx_for_humans (tx_obj, network, total_input_amount, ideal_fee_per_byte, btc_market_value, target_fee) {
+    var msg = '';
+    var btc;
+    var usd;
+    var fee;
+    var total_output_amount = 0;
+    var decoded = decode_tx (tx_obj, network);
+    var size = signed_tx_size (tx_obj, network);
+    
+    msg += '\nTx hash: ' +decoded.tx_hash;
     msg += '\n---';
-    tx.ins.forEach( function(input, i) {
-        msg += '\nInput #' +i+ ': ' +input.hash.reverse().toString('hex')+ '/' +input.index;
+    decoded.inputs.forEach( function (input, i) {
+        msg += '\nInput #' +i+ ': ' +input.tx+ '/' +input.index;
     });
     msg += '\n---';
-    tx.outs.forEach( function(output, i) {
-        amount_satoshis = output.value;
-        amount_btc = parseFloat((amount_satoshis * 10**-8).toFixed(8));
-        amount_mbtc = parseFloat((amount_btc * 1000).toFixed(5));
-        msg += '\nOutput #' +i+ ': ' +bitcoinjs.address.fromOutputScript (output.script, network)+ '/' +amount_satoshis+ ' = ' +amount_mbtc+ ' mBTC = ' +amount_btc+ ' BTC';
-        outputs_satoshis += output.value;
+    decoded.outputs.forEach( function (output, i) {
+        total_output_amount += output.amount;
+        btc = to_btc(output.amount);
+        usd = (btc.value*btc_market_value).toFixed(2);
+        msg += '\nOutput #' +i+ ': ' +output.addr+ '/' +output.amount+ ' = ' +btc.value+ ' ' +btc.unit+ ' (' +usd+ ' USD)';
     });
     msg += '\n===';
-    if (total_input_amount != '') {
-        inputs_btc = parseFloat((total_input_amount * 10**-8).toFixed(8));
-        inputs_mbtc = parseFloat((total_input_amount * 1000).toFixed(5));
-        msg += '\nTotal input : ' +total_input_amount+ ' satoshis = ' +inputs_mbtc+ ' mBTC = ' +inputs_btc+ ' BTC';
-    }
-    outputs_btc = parseFloat((outputs_satoshis * 10**-8).toFixed(8));
-    outputs_mbtc = parseFloat((outputs_btc * 1000).toFixed(5));
-    msg += '\nTotal output: ' +outputs_satoshis+ ' satoshis = ' +outputs_mbtc+ ' mBTC = ' +outputs_btc+ ' BTC';
-    if (total_input_amount != '') {
-        fee_satoshis = total_input_amount-outputs_satoshis;
-        fee_btc = parseFloat((fee_satoshis * 10**-8).toFixed(8));
-        fee_mbtc = parseFloat((fee_btc * 1000).toFixed(5));
-        if (target_tx_fee != '') {
-            target_fee_btc = parseFloat((target_tx_fee * 10**-8).toFixed(8));
-            target_fee_mbtc = parseFloat((target_fee_btc * 1000).toFixed(5));
-            msg += '\nTarget fee   : ' +target_tx_fee+ ' satoshis = ' +target_fee_mbtc+ ' mBTC = ' +target_fee_btc+ ' BTC';
-        }
-        msg += '\nEstimated fee: ' +fee_satoshis+ ' satoshis = ' +fee_mbtc+ ' mBTC = ' +fee_btc+ ' BTC';
-        if (target_tx_fee != '') {
-            msg += '\nFee delta    : ' +(fee_satoshis-target_tx_fee)+ ' satoshis = ' +parseFloat((fee_mbtc-target_fee_mbtc).toFixed(5))+ ' mBTC = ' +parseFloat((fee_btc-target_fee_btc).toFixed(8))+ ' BTC';
-        }
-        if (btc_market_value != '') {
-            fee_value = parseFloat((fee_btc*btc_market_value).toFixed(6));
-            msg += '\nEstimated fee value: ' +fee_value+ ' USD';
-        }
-    }
+    btc = to_btc(total_input_amount);
+    usd = to_usd(total_input_amount, btc_market_value);
+    msg += '\nTotal input : ' +total_input_amount+ ' sat = ' +btc.value+ ' ' +btc.unit+ ' (' +usd.value+ ' ' +usd.unit+ ')';
     
+    btc = to_btc(total_output_amount);
+    usd = to_usd(total_output_amount, btc_market_value);
+    msg += '\nTotal output: ' +total_output_amount+ ' sat = ' +btc.value+ ' ' +btc.unit+ ' (' +usd.value+ ' ' +usd.unit+ ')';
+    
+    fee = total_input_amount-total_output_amount
+    btc = to_btc(fee);
+    usd = to_usd(fee, btc_market_value);
+    msg += '\nFee       : ' +fee+ ' sat = ' +btc.value+ ' ' +btc.unit+ ' (' +usd.value+ ' ' +usd.unit+ ')';
+    
+    btc = to_btc(target_fee);
+    usd = to_usd(target_fee, btc_market_value);
+    msg += '\n---';
+    msg += '\nTarget fee: ' +target_fee+ ' sat = ' +btc.value+ ' ' +btc.unit+ ' (' +usd.value+ ' ' +usd.unit+ ')';
+
+    delta = fee-target_fee;
+    btc = to_btc(delta);
+    usd = to_usd(delta, btc_market_value);
+    msg += '\nDelta fee : ' +delta+ ' sat = ' +btc.value+ ' ' +btc.unit+ ' (' +usd.value+ ' ' +usd.unit+ ')';
+    
+    
+    msg += '\nEstimated size of signed tx (comp. pubkey)  : ' +size.comp+ ' bytes';
+    msg += '\nEstimated size of signed tx (uncomp. pubkey): ' +size.uncomp+ ' bytes';
+    
+    fee = ideal_fee_per_byte*size.comp;
+    btc = to_btc(fee);
+    usd = to_usd(fee, btc_market_value);
+    msg += '\nIdeal tx fee (compressed pubkey)  : ' +btc.value+ ' ' +btc.unit+ ' (' +usd.value+ ' ' +usd.unit+ ')';
+    
+    fee = ideal_fee_per_byte*size.uncomp;
+    btc = to_btc(fee);
+    usd = to_usd(fee, btc_market_value);
+    msg += '\nIdeal tx fee (uncompressed pubkey): ' +btc.value+ ' ' +btc.unit+ ' (' +usd.value+ ' ' +usd.unit+ ')';
+
     return msg;
 };
 </script>        
