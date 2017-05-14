@@ -1,0 +1,239 @@
+<meta charset="UTF-8" />
+<form name="form" onsubmit="return false;">
+    <fieldset>
+        <legend>Create a transaction</legend>
+        <br>
+        Network:<p>
+        <div>
+            <input type="radio" id="network_btc" name="network" value="btc"> BTC<br>
+            <input type="radio" id="network_ltc" name="network" value="ltc"> LTC<br>
+            <input type="radio" id="network_dash" name="network" value="dash"> DASH<br>
+            <input type="radio" id="network_doge" name="network" value="doge"> DOGE<br>
+        </div>
+
+        
+        <br>
+        <u>TX string</u><br><br>
+        <textarea id="tx_str"  cols="100" rows="10"></textarea>
+        <br>
+
+        <br><br>
+        <u>Estimated market value of a BTC in USD (optional, for fee calculation)</u><br><br>
+        <input type="text" id="btc_market_value"><br>
+        <br>
+        
+        <br><br>
+        <u>Target transaction fee in BTC (optional)</u><br><br>
+        <input type="text" id="target_fee"><br>
+        <br>
+
+        <br><br>
+        <u>Ideal fee per byte in satoshis/byte (optional)</u><br><br>
+        <input type="text" id="ideal_fee_per_byte"><br>
+        <br>
+        
+        <br><br>                
+        <input type="submit" value="Get tx hex" onclick="main2();" />
+        <br>
+
+        <hr>
+        
+        <br>
+        <u>Decoded tx</u><br><br>
+        <textarea readonly id="decoded_tx"  cols="100" rows="20"></textarea>
+        <br>
+        
+        <br>
+        <u>Unsigned tx hex</u><br><br>
+        <textarea readonly id="unsigned_tx_hex"  cols="100" rows="10"></textarea>
+        <br>
+        <div id="msg"></div>    
+        <div id="unsigned_tx_qrcode"></div>
+        <br>
+        QRCode version:<p>
+        <input type="text" id="version"><br>
+        <br>
+        QRCode level:<p>
+        <div>
+            <input type="radio" id="level_l" name="level" value="L"> L<br>
+            <input type="radio" id="level_m" name="level" value="M"> M<br>
+            <input type="radio" id="level_q" name="level" value="Q"> Q<br>
+            <input type="radio" id="level_h" name="level" value="H"> H<br>
+        </div>
+    </fieldset>
+</form>
+
+
+
+<script src="bitcoinjs.min.js"></script>
+<script src="qrcode.min.js"></script>
+<script src="module.js"></script>
+<script>
+document.getElementById('network_btc').checked = true;
+document.getElementById('version').value = '16'; 
+document.getElementById('level_l').checked = true;
+document.getElementById('unsigned_tx_hex').value = ''; 
+document.getElementById('decoded_tx').value = '';
+
+window.onerror = function (msg, url, lineNo, columnNo, error) {
+    alert(msg);
+    return false;
+}
+
+function main2() {
+    version = version = Math.round(document.getElementById("version").value);
+    btc_market_value = parseFloat(document.getElementById("btc_market_value").value);
+    target_fee = to_satoshi(document.getElementById("target_fee").value).value;
+    ideal_fee_per_byte = parseInt(document.getElementById("ideal_fee_per_byte").value);    
+
+    for (i=0; i<document.form.network.length; i++) {
+        if (document.form.network[i].checked) {
+            network_choice = document.form.network[i].value;
+            if (network_choice == 'btc') {
+                network = bitcoinjs.networks.bitcoin;
+            }    
+            else if (network_choice == 'ltc') {
+                network = bitcoinjs.networks.litecoin;
+            }
+            else if (network_choice == 'dash') {
+                network = bitcoinjs.networks.dash;
+            }
+            else if (network_choice == 'doge') {
+                network = bitcoinjs.networks.dogecoin;
+            }
+            break;
+        }
+    }
+    console.log('Network: ' +network_choice);
+    
+    console.log('Version: ' +version);
+    for(i=0; i<document.form.level.length; i++) {
+        if (document.form.level[i].checked) {
+            level = document.form.level[i].value;
+            break;
+        }
+    }
+    console.log('Level: ' +level);
+ 
+    
+    tx_str = document.getElementById('tx_str').value;
+
+    obj = parse_to_inputs_outputs(tx_str);
+    
+    total_input_amount = 0;
+    for (input of obj.inputs) {
+        total_input_amount += input.amount;
+    }
+    
+    unsigned_tx_hex = create_unsigned_tx(network, obj.inputs, obj.outputs);
+    document.getElementById('unsigned_tx_hex').value = unsigned_tx_hex;
+    qr = qrcode(version, level);
+    qr.addData(unsigned_tx_hex);
+    qr.make();
+    document.getElementById('unsigned_tx_qrcode').innerHTML = qr.createImgTag();
+    
+    tx = bitcoinjs.Transaction.fromHex(unsigned_tx_hex);
+    decoded_tx = decode_tx_for_humans(tx, network, total_input_amount, ideal_fee_per_byte, btc_market_value, target_fee)
+    document.getElementById('decoded_tx').value = decoded_tx;
+
+    alert('Success!');
+}
+
+
+function main() {
+    var raw_inputs;
+    var inputs;
+    var raw_outputs;
+    var outputs;
+    var unsigned_tx_hex;
+    var decoded_tx;
+    var qr;
+    var tx;
+    var version = version = Math.round(document.getElementById("version").value);
+    var level;    
+    var network;
+    var network_choice;
+    var ideal_tx_fee_comp;
+    var ideal_tx_fee_uncomp;
+    var in_1_tx = document.getElementById("input_1_tx").value;
+    var in_1_index = parseInt(document.getElementById("input_1_index").value);
+    var in_2_tx = document.getElementById("input_2_tx").value;
+    var in_2_index = parseInt(document.getElementById("input_2_index").value);
+    var output_1_addr = document.getElementById("output_1_addr").value;
+    var output_1_amount = to_satoshi(document.getElementById("output_1_amount").value).value;
+    var output_2_addr = document.getElementById("output_2_addr").value;
+    var output_2_amount = to_satoshi(document.getElementById("output_2_amount").value).value;
+    var output_3_addr = document.getElementById("output_3_addr").value;
+    var output_3_amount = to_satoshi(document.getElementById("output_3_amount").value).value;
+    var output_4_addr = document.getElementById("output_4_addr").value;
+    var output_4_amount = to_satoshi(document.getElementById("output_4_amount").value).value;
+    var output_5_addr = document.getElementById("output_5_addr").value;
+    var output_5_amount = to_satoshi(document.getElementById("output_5_amount").value).value;
+    var total_input_amount = to_satoshi(document.getElementById("total_input_amount").value).value;
+    var btc_market_value = parseFloat(document.getElementById("btc_market_value").value);
+    var target_fee = to_satoshi(document.getElementById("target_fee").value * 10^8);
+    var ideal_fee_per_byte = parseInt(document.getElementById("ideal_fee_per_byte").value);
+
+    for (i=0; i<document.form.network.length; i++) {
+        if (document.form.network[i].checked) {
+            network_choice = document.form.network[i].value;
+            if (network_choice == 'network_btc') {
+                network = bitcoinjs.networks.bitcoin;
+            }    
+            else if (network_choice == 'network_ltc') {
+                network = bitcoinjs.networks.litecoin;
+            }
+            else if (network_choice == 'network_dash') {
+                network = bitcoinjs.networks.dash;
+            }
+            else if (network_choice == 'network_doge') {
+                network = bitcoinjs.networks.dogecoin;
+            }
+            break;
+        }
+    }
+    console.log('Network: ' +network_choice);
+    
+    console.log('Version: ' +version);
+    for(i=0; i<document.form.level.length; i++) {
+        if (document.form.level[i].checked) {
+            level = document.form.level[i].value;
+            break;
+        }
+    }
+    console.log('Level: ' +level);
+    
+    raw_inputs = [[in_1_tx, in_1_index], [in_2_tx, in_2_index]];
+    inputs = [];
+    for (input of raw_inputs) {
+        tx_hash = input[0];
+        tx_index = input[1];
+        if ( tx_hash != '' && !isNaN(tx_index)) {
+            inputs.push({'tx_hash': tx_hash, 'vout': tx_index});
+        }
+    }
+    raw_outputs = [[output_1_addr, output_1_amount], [output_2_addr, output_2_amount], [output_3_addr, output_3_amount], [output_4_addr, output_4_amount], [output_5_addr, output_5_amount]];
+    outputs = [];
+    for (output of raw_outputs) {
+        address = output[0];
+        amount = output[1];
+        if ( address != '' && amount > 0 ) {
+            outputs.push({'address': address, 'amount': amount});
+        }
+    }
+    unsigned_tx_hex = create_unsigned_tx(network, inputs, outputs);
+    
+    qr = qrcode(version, level);
+    qr.addData(unsigned_tx_hex);
+    qr.make();
+    document.getElementById('unsigned_tx_hex').value = unsigned_tx_hex;
+    document.getElementById('unsigned_tx_qrcode').innerHTML = qr.createImgTag();
+    
+    tx = bitcoinjs.Transaction.fromHex(unsigned_tx_hex);
+    decoded_tx = decode_tx_for_humans(tx, network, total_input_amount, ideal_fee_per_byte, btc_market_value, target_fee)
+    document.getElementById('decoded_tx').value = decoded_tx;
+
+    alert('Success!');
+}
+</script>        
+
