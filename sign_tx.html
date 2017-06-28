@@ -79,16 +79,16 @@ function calc_addrs() {
     for (i=0; i<document.form.network.length; i++) {
         if (document.form.network[i].checked) {
             var network_choice = document.form.network[i].value;
-            if (network_choice == 'network_btc') {
+            if (network_choice == 'btc') {
                 network = bitcoinjs.networks.bitcoin;
             }    
-            else if (network_choice == 'network_ltc') {
+            else if (network_choice == 'ltc') {
                 network = bitcoinjs.networks.litecoin;
             }
-            else if (network_choice == 'network_dash') {
+            else if (network_choice == 'dash') {
                 network = bitcoinjs.networks.dash;
             }
-            else if (network_choice == 'network_doge') {
+            else if (network_choice == 'doge') {
                 network = bitcoinjs.networks.dogecoin;
             }
             break;
@@ -116,16 +116,16 @@ function sign_tx() {
     for (i=0; i<document.form.network.length; i++) {
         if (document.form.network[i].checked) {
             var network_choice = document.form.network[i].value;
-            if (network_choice == 'network_btc') {
+            if (network_choice == 'btc') {
                 network = bitcoinjs.networks.bitcoin;
             }    
-            else if (network_choice == 'network_ltc') {
+            else if (network_choice == 'ltc') {
                 network = bitcoinjs.networks.litecoin;
             }
-            else if (network_choice == 'network_dash') {
+            else if (network_choice == 'dash') {
                 network = bitcoinjs.networks.dash;
             }
-            else if (network_choice == 'network_doge') {
+            else if (network_choice == 'doge') {
                 network = bitcoinjs.networks.dogecoin;
             }
             break;
