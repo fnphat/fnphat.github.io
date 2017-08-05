@@ -1,0 +1,9 @@
+{
+    'when': 'now',
+    'mode': 'cool',
+    'temperature': 22,
+    'fan': 'auto',
+    'flow': 'dynamic',
+    'swing': 'dynamic',
+    'send': true
+}
